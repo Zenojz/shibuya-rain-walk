@@ -182,16 +182,19 @@ function facadeMaterial() {
     uniforms: { ...U, uPack: { value: null }, uPackOn: { value: 0 } },
     vertexShader: /* glsl */`
       attribute vec4 aFac; attribute vec3 color; attribute vec3 aT;
-      varying vec4 vFac; varying vec3 vN, vW, vC, vT;
-      void main(){ vFac = aFac; vC = color; vN = normalize(mat3(modelMatrix) * normal); vT = aT; vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
+      varying vec4 vFac; varying vec3 vN, vW, vC, vT; flat varying float vSeed;
+      void main(){ vFac = aFac; vSeed = aFac.z; vC = color; vN = normalize(mat3(modelMatrix) * normal); vT = aT; vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
     fragmentShader: /* glsl */`
       ${GLSL_COMMON}
       ${FACADE_GLSL}
       varying vec4 vFac; varying vec3 vN, vW, vC, vT; uniform float uCheap;
+      // (the wall's seed not interpolated: up to ~1000, a constant interpolated came out a little different at each
+      // pixel on some GPUs (D3D11), and the hashes made every pixel a different window: the walls sparkled)
+      flat varying float vSeed;
       void main(){
         vec3 n = normalize(vN), T = normalize(vec3(vT.x, 0.0, vT.z)), B = vec3(0.0, 1.0, 0.0);
         gPix = length(fwidth(vW)); gCamD = distance(cameraPosition, vW);
-        float u = vFac.x, v = vFac.y, seed = vFac.z, kind = vFac.w;
+        float u = vFac.x, v = vFac.y, seed = vSeed, kind = vFac.w;
         float fh, mw, glassy, litK; kindParams(kind, fh, mw, glassy, litK);
         mw *= 0.85 + 0.3 * hash12(vec2(seed, 3.0));
         float fl = floor(v / fh), fv = fract(v / fh), ci = floor(u / mw), fu = fract(u / mw);
@@ -372,15 +375,15 @@ export function shopRainMesh(geoms) {
     name: 'shop rain', uniforms: { ...U }, transparent: true, depthWrite: false, depthFunc: THREE.LessEqualDepth,
     polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2,
     blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor, blendSrcAlpha: THREE.ZeroFactor, blendDstAlpha: THREE.OneFactor,
-    vertexShader: /* glsl */`attribute vec4 aFac; attribute vec3 aT; attribute vec2 aBase; varying vec4 vFac; varying vec3 vN, vW, vT; varying vec2 vBase;
-      void main(){ vFac = aFac; vT = aT; vBase = aBase; vN = normalize(mat3(modelMatrix) * normal); vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
+    vertexShader: /* glsl */`attribute vec4 aFac; attribute vec3 aT; attribute vec2 aBase; varying vec4 vFac; varying vec3 vN, vW, vT; varying vec2 vBase; flat varying float vSeed;
+      void main(){ vFac = aFac; vSeed = aFac.z; vT = aT; vBase = aBase; vN = normalize(mat3(modelMatrix) * normal); vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
     fragmentShader: /* glsl */`${GLSL_COMMON}
       ${GLASS_RAIN}
-      varying vec4 vFac; varying vec3 vN, vW, vT; varying vec2 vBase;
+      varying vec4 vFac; varying vec3 vN, vW, vT; varying vec2 vBase; flat varying float vSeed;   // (flat: see the facade)
       void main(){
         float fw = length(fwidth(vW)), dist = distance(cameraPosition, vW);
         if (uRain < 0.01 || dist > 30.0) discard;                       // (further off it can't be told from the glass)
-        float u = vFac.x, v = vFac.y, seed = vFac.z;
+        float u = vFac.x, v = vFac.y, seed = vSeed;
         float bw = 4.0 + 3.0 * hash12(vec2(seed, 11.0)), bay = floor(u / bw), fb = fract(u / bw);   // (as the facade shader has them)
         if ((fb < 0.05 || fb > 0.95) && vFac.w < 3.5) discard;
         vec3 n = normalize(vN), lit = uSky * 1.2 + streetLight(vW, n) * 0.6;

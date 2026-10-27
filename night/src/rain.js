@@ -78,7 +78,7 @@ export class Rain {
         ${GLSL_COMMON}
         ${ROOM}
         attribute vec4 aSeed; uniform vec3 uCam; uniform float uSize; uniform sampler2D uMask; uniform vec4 uBox;
-        varying vec2 vUv; varying float vT, vA, vSeed, vBig; varying vec3 vL;
+        varying vec2 vUv; varying float vT, vA, vBig; flat varying float vSeed; varying vec3 vL;
         float h1(float x){ return fract(sin(x * 127.1) * 43758.5453); }
         void main(){
           // each lands somewhere new each time round; each time it is a different drop: its size (most tiny, a few big),
@@ -104,7 +104,7 @@ export class Rain {
           if (inRoom(p)) vA = 0.0;
           gl_Position = projectionMatrix * viewMatrix * vec4(w, 1.0);
         }`,
-      fragmentShader: /* glsl */`varying vec2 vUv; varying float vT, vA, vSeed, vBig; varying vec3 vL;
+      fragmentShader: /* glsl */`varying vec2 vUv; varying float vT, vA, vBig; flat varying float vSeed; varying vec3 vL;
         float h1(float x){ return fract(sin(x * 127.1) * 43758.5453); }
         void main(){
           if (vA < 0.001) discard;

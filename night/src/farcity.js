@@ -440,10 +440,10 @@ const FAR_GLSL = /* glsl */`
 function farMat() {
   return new THREE.ShaderMaterial({
     name: 'farcity', uniforms: { ...U },
-    vertexShader: `attribute vec4 aSeed; varying vec3 vN, vW, vL; varying vec4 vS;
+    vertexShader: `attribute vec4 aSeed; varying vec3 vN, vW, vL; flat varying vec4 vS;
       void main(){ vS = aSeed; vec4 w = modelMatrix * instanceMatrix * vec4(position, 1.0); vW = w.xyz; vN = normalize(mat3(modelMatrix) * mat3(instanceMatrix) * normal);
         vL = position * vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz)); gl_Position = projectionMatrix * viewMatrix * w; }`,
-    fragmentShader: `${GLSL_COMMON} ${FAR_GLSL} varying vec3 vN, vW, vL; varying vec4 vS;
+    fragmentShader: `${GLSL_COMMON} ${FAR_GLSL} varying vec3 vN, vW, vL; flat varying vec4 vS;   // (flat: an interpolated seed differed pixel to pixel on some GPUs, and the hashes made the walls sparkle)
       void main(){
         vec3 n = normalize(vN); float s = vS.x, kind = vS.z;
         // Tokyo's colours: white, pale grey and beige tile mostly; a few brown brick, dark glass, cream; houses' walls
@@ -469,12 +469,12 @@ function farMat() {
 function towerMat() {
   return new THREE.ShaderMaterial({
     name: 'fartowers', uniforms: { ...U },
-    vertexShader: `attribute vec4 aFac; attribute vec3 color, aTop; varying vec4 vF; varying vec3 vC, vN, vW; varying float vTop;
-      void main(){ vF = aFac; vC = color; vTop = aTop.x; vN = normalize(mat3(modelMatrix) * normal); vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
-    fragmentShader: `${GLSL_COMMON} varying vec4 vF; varying vec3 vC, vN, vW; varying float vTop;
+    vertexShader: `attribute vec4 aFac; attribute vec3 color, aTop; varying vec4 vF; varying vec3 vC, vN, vW; varying float vTop; flat varying float vSeed;
+      void main(){ vF = aFac; vSeed = aFac.z; vC = color; vTop = aTop.x; vN = normalize(mat3(modelMatrix) * normal); vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
+    fragmentShader: `${GLSL_COMMON} varying vec4 vF; varying vec3 vC, vN, vW; varying float vTop; flat varying float vSeed;   // (flat: as the low city's)
       void main(){
         vec3 n = normalize(vN), V = normalize(cameraPosition - vW);
-        float u = vF.x, v = vF.y, seed = vF.z, kind = vF.w;
+        float u = vF.x, v = vF.y, seed = vSeed, kind = vF.w;
         float fh = kind > 1.5 ? 3.4 : kind > 0.5 ? 3.1 : 4.1, cw = kind > 1.5 ? 3.6 : kind > 0.5 ? 2.8 : 1.5;
         float fl = floor(v / fh), fv = fract(v / fh), ci = floor(u / cw), fu = fract(u / cw);
         float cell = max(fwidth(v / fh), fwidth(u / cw));
